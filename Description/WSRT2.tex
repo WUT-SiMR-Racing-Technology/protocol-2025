@@ -1,0 +1,214 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\newgeometry{vmargin={35mm}, hmargin={20mm,20mm}}
+\newcommand{\protocolversion}{0.1.0}
+
+\pagestyle{fancy}
+
+\renewcommand{\footrulewidth}{0.4pt}
+\renewcommand{\footskip}{2cm}
+\fancyfoot[C]{
+    \makebox[\textwidth][c]{
+        %\begin{minipage}[c]{0.3\textwidth}
+        %    \centering
+        %    \includegraphics[height=0.20\textwidth, keepaspectratio]{pjait.jpg}
+        %\end{minipage}
+        \begin{minipage}[c]{0.3\textwidth}
+            \centering
+            \includegraphics[height=0.30\textwidth, keepaspectratio]{wsrt.jpg}
+        \end{minipage}
+        %\begin{minipage}[c]{0.3\textwidth}
+        %    \centering
+        %    \includegraphics[height=0.30\textwidth, keepaspectratio]{wut.jpg}
+        %\end{minipage}
+    }
+}
+\fancyhead[r]{
+CANNotWork v.\protocolversion
+}
+\fancyhead[c]{
+\thepage
+}
+\fancyhead[l]{
+WUT SiMR Racing Technology
+}
+
+\title{\Huge Protokół CANNotWork \protocolversion}
+\author{WUT SiMR Racing}
+\date{02.02.2025}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+\vfill
+\begin{center}
+    \raisebox{-\depth}{\includegraphics[height=0.20\textwidth]{wsrt.jpg}}
+\end{center}
+\vfill
+\newpage
+\section*{Cel protokołu}
+Celem protokołu jest umożliwienie realizacji akwizycji danych, które będą generowane przez czujniki motocykla budowanego w ramach działalności Koła naukowego mechaników pojazdów sekcja WUT SiMR Racing Technology. Protokół do przesyłania informacji wykorzystuje protokół CAN 2.0B.
+
+Stworzenie protokołu jest konieczne z racji przestarzałości CAN 2.0B, które umożliwia przesyłanie tylko 8 bajtów danych w jednej wiadomości, które nie są wystarczające dla czujników posiadających wiele kanałów. Sposobem rozwiązania tego problemu jest wykorzystanie bardzo dużego identyfikatora wiadomości (29 bitów), który zostanie podzielony na segmenty. Transmisja odbywa się bez jakichkolwiek potwierdzeń, aby nie obciążać łącza, oraz ponieważ niektóre dane tracą aktualność w czasie milisekund.
+
+\section*{Segmenty identyfikatora}
+\begin{itemize}
+    \item Funkcja wiadomości: 4 bity
+    \item Adres nadawcy albo odbiorcy: 8 bitów
+    \item Zależne od funkcji: 17 bitów
+\end{itemize}
+
+\section*{Adresowanie}
+Adres składa się z 8 bitów. 
+Adres 0x00 jest zarezerwowany dla kontrolera sieci. 
+Adres 0xFF jest zarezerwowany dla rozgłoszeń.
+
+\section*{Kanały}
+Kanał zawiera 8 bitów znaczących. 1 bajt zgodnie z:
+\begin{itemize}
+    \item 0 - kanał przenoszący informację o liczbie kanałów
+    \item 1 - 255 - numery kolejnych kanałów
+\end{itemize}
+
+\section*{Częstotliwości}
+Wspierane częstotliwości to:
+\begin{itemize}
+    \item 125 kbit/s
+    \item 250 kbit/s
+    \item 500 kbit/s - preferowane i domyślne
+    \item 1 Mbit/s
+\end{itemize}
+Protokół zakłada brak zmian częstotliwości w trakcie pracy.
+\goodbreak
+\section*{Funkcje}
+\begin{itemize}
+    \item \textbf{0x0} Zarezerwowana.
+    \item \textbf{0x1} Rozkazy od kontrolera sieci. 
+    Segment adres jest adresem odbiorcy. 
+    Identyfikator rozkazu: 16 bitów. 
+    Wolne: 1 bit. 
+    Dane 1-8 bajtów danych.
+    \item \textbf{0x2} Odpowiedzi do kontrolera sieci.
+    Segment adres jest adresem nadawcy.
+    Identyfikator rozkazu: 16 bitów
+    Wolne: 1 bit
+    Dane 1-8 bajtów danych. 
+    Dane 8 bajtów.
+    \item \textbf{0x3} Prośba o adres. 
+    Segment adres jest adresem odbiorcy. 
+    Tymczasowy identyfikator: 17 bitów. 
+    Dane 8 bajtów.
+    \item \textbf{0x4} Zwrot adresu. 
+    Segment adres jest adresem odbiorcy. 
+    Tymczasowy identyfikator: 17 bitów. 
+    Dane 1 bajt z identyfikatorem urządzenia.
+    \item \textbf{0x5} Przesył odczytanych danych. 
+    Segment adres jest adresem nadawcy. 
+    Kanał: 8 bitów. 
+    Wolne: 9 bit. 
+    Dane 1-8 bajtów danych.
+    \item \textbf{0x6} Wymiana danych struktury odczytów. 
+    Segment adres jest adresem nadawcy. 
+    Kanał: 8 bitów. 
+    Nazwa czy typ: 2 bit. 
+    Wolne 7 bitów.
+    Dane 1-8 bajtów.
+     \item \textbf{0xA} Heartbeat. 
+    Segment adres jest adresem nadawcy. 
+    Bity w formacie 0b10101010101010101.
+    Dane 1 bajt.
+\end{itemize}
+
+\section*{Rozkazy od kontrolera sieci 0x1}
+\begin{itemize}
+    \item \textbf{0x0001} Rozpocznij transmisję danych. 
+    Dane 1 bajt dowolnych danych.
+    \item \textbf{0x0002} Zatrzymaj transmisję danych. 
+    Dane 1 bajt dowolnych danych.
+    \item \textbf{0x0003} Zresetuj kanał. 
+    Dane 2 bajty z numerem kanału, MSB ustawiony na 0.
+    \item \textbf{0x0004} Wyłączenie kanału.
+    Dane 2 bajty z numerem kanału, MSB ustawiony na 0.
+
+    \item \textbf{0x0005}
+    Ustawienie częstotliwości kanału
+    Dane 2 bajty z numerem kanału, MSB ustawiony na 0.
+    Dane 4 bajty częstotliwość oczekiwana w formacie uint32\_t wyrażona w 0.1mHz.
+    \item \textbf{0x00FF} Wyłączenie urządzenia. 
+    Dane 1 bajt dowolnych danych.
+    \item \textbf{0x0FFF} Reset urządzenia. 
+    Dane 1 bajt dowolnych danych.
+\end{itemize}
+
+\section*{Odpowiedzi do kontrolera sieci 0x2}
+\begin{itemize}
+    \item \textbf{0x0003} Zresetuj kanał.
+    Dane 1 bajt, 0x00 odrzucenie, cokolwiek innego potwierdzenie.
+    \item \textbf{0x0005} Ustawienie częstotliwości kanału
+    Dane 1 bajt, 0x00 odrzucenie, cokolwiek innego potiwerdzenie.
+\end{itemize}
+
+\section*{Zwrot adresu 0x3}
+Oprócz "unikalnego" 17-bitowego identyfikatora, dane 8 bajtów z nazwą urządzenia, jako 8 char.
+
+\section*{Wymiana danych struktury odczytów 0x4}
+\begin{itemize}
+    \item Nazwa, typ, częstotliwości = 0b00
+    \begin{itemize}
+    \item Kanał 0x00 oznacza wiadomość informującą o liczbie kanałów. 
+    Dane w formacie uint8\_t z liczbą kanałów.
+    \item Kanały inne niż 0x00 to wiadomość informującą o typie danych przesyłanych na tym kanale, zgodnie z opisem:
+    \begin{itemize}
+        \item 0x00 - uint8\_t
+        \item 0x01 - int8\_t
+        \item 0x02 - unsigned char
+        \item 0x03 - char
+        \item 0x10 - uint16\_t
+        \item 0x11 - int16\_t
+        \item 0x20 - uint32\_t
+        \item 0x21 - int32\_t
+        \item 0x22 - float (32 bit)
+        \item 0x30 - uint64\_t
+        \item 0x31 - int64\_t
+        \item 0x32 - float/double (64 bit)
+    \end{itemize}
+    \end{itemize}
+    \item Nazwa, typ, częstotliwości = 0b01
+        \begin{itemize}
+            \item Dane 4 bajty z maksymalną częstotliwością pomiaru i wysyłania kanału w formacie uint32\_t wyrażona w 0.1mHz .
+
+            \item Dane kolejne 4 bajty z aktualną częstotliwości pomiaru i wysyłania kanału w formacie uint32\_t wyrażona w 0.1mHz . 0 oznacza kanał wyłączony.
+        \end{itemize}
+    \item Nazwa, typ, częstotliwości = 0b10
+    \begin{itemize}
+    \item Dane w formacie tablicy 8 char: Nazwa kanału.
+    \end{itemize}
+    
+    \item Nazwa, typ, częstotliwości = 0b11
+    \begin{itemize}
+    \item Dane 2 bajty w formacie uint16\_t oznaczające jednostkę odcczytanych danych z tabeli jednostek.
+    \end{itemize}
+\end{itemize}
+
+\section*{Heartbeat 0xA}
+Dane w formacie 0b10101010. Heartbeat przemyślany jest do wysyłania tylko przez kontroler sieci jako swój rodzaj automatycznego przekazywania częstotliwości z jaką pracuje magistrala do pozostałych urządzeń. Powinien być nadawany nie częściej niż raz na 10 sekund i nie rzadziej niż raz na 60 sekund. 
+
+\section*{Działanie urządzenia}
+Po włączeniu urządzenie nie przesyła danych odczytywanych.\newline
+Urządzenie przedstawia się i prosi o nadanie adresu w sieci.\newline
+Jeżeli po 3 wysłaniach zapytania o adres urządzenie nie otrzyma odpowiedzi, należy założyć, że częstotliwość jest inna niż obecnie założona. Należy nasłuchiwać heartbeat w celu synchronizacji.
+Po uzyskaniu adresu w sieci urządzenie przesyła cyklicznie informacje o swoich kanałach, zaczynając zawsze od kanału 0x00, który jest zarezerwowany do opisu liczby kanałów.\newline
+Kontroler sieci po uzyskaniu informacji o wszystkich kanałach wysyła rozkaz rozpoczęcia transmisji danych.\newline
+Urządzenie po otrzymaniu rozkazu przestaje nadawać informacje o kanałach i rozpoczyna przesyłanie danych na odpowiednich kanałach.\newline
+Kontroler może wymusić wyłączenie kanału, najlepiej bez wpływu na pozostałe kanały.\newline
+Kontroler może wymusić reset kanału, urządzenie powinno zrestartować wtedy sensor, najlepiej bez wpływu na pozostałe kanały.\newline
+Kontroler może wymusić wyłączenie urządzenia, urządzenie nie powinno wtedy już nic nadawać.\newline
+Kontroler może wymusić reset urządzenia, wtedy urządzenie powinno powrócić do stanu z początku instrukcji działania.\newline
+Kontroler może wymusić zmianę częstotliwości przesyłania kanału, urządzenie odpowiada potwierdzeniem, albo odmową.\newline
+
+\end{document}
