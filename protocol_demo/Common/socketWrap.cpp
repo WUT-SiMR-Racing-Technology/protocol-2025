@@ -8,7 +8,7 @@ wsrt::SocketWrap::SocketWrap(const char _name[]) : sock{socket(PF_CAN, SOCK_RAW,
 			throw std::runtime_error("Unable to create socket");
 	}
 
-auto wsrt::SocketWrap::socketInit() -> void
+auto wsrt::SocketWrap::init(const int & timeout) -> int
 {
 	strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
 	ioctl(sock, SIOCGIFINDEX, &ifr);
@@ -16,9 +16,14 @@ auto wsrt::SocketWrap::socketInit() -> void
 	addr.can_ifindex = ifr.ifr_ifindex;
 	if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) 
 		throw std::runtime_error("Error binding socket");
+	timeval tv = {};      
+	tv.tv_sec = timeout;
+	tv.tv_usec = 0;
+	 if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)))
+	 	throw std::runtime_error("Error setting timeout");
 	initialized = true;
 }
-auto wsrt::SocketWrap::sendFrame(const uint32_t & identifier, const std::vector<uint8_t> & data) -> void
+auto wsrt::SocketWrap::sendFrame(const uint32_t & identifier, const std::vector<uint8_t> & data) -> int
 {
 	if (not initialized)
 		throw std::runtime_error("Socket not initialized");
@@ -32,7 +37,7 @@ auto wsrt::SocketWrap::sendFrame(const uint32_t & identifier, const std::vector<
 	if (write(sock, &frame, sizeof(can_frame)) != sizeof(can_frame))
 		throw std::runtime_error("Unable to write"); 
 }
-auto wsrt::SocketWrap::readBlockingFrame(uint32_t & id, std::vector<uint8_t> & data) -> void
+auto wsrt::SocketWrap::readBlockingFrame(uint32_t & id, std::vector<uint8_t> & data) -> int
 {
 	if (not initialized)
 		throw std::runtime_error("Socket not initialized");
@@ -46,7 +51,7 @@ auto wsrt::SocketWrap::readBlockingFrame(uint32_t & id, std::vector<uint8_t> & d
 	data.assign(reinterpret_cast<uint8_t*>(frame.data),	reinterpret_cast<uint8_t*>(frame.data) + frame.can_dlc);
 	
 }
-auto wsrt::SocketWrap::setFilter(const uint32_t & _filter, const uint32_t & mask) -> void
+auto wsrt::SocketWrap::setFilter(const uint32_t & _filter, const uint32_t & mask) -> int
 {
 	can_filter filter;
 	filter.can_id = _filter;

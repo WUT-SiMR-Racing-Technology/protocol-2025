@@ -18,11 +18,13 @@
 #include <iterator>
 #include <array>
 
+#include "../CANNotWork/canthing.h"
+
 namespace wsrt{
 	class SocketWrap;
 }
 
-class wsrt::SocketWrap{
+class wsrt::SocketWrap : public wsrt::CAN{
 private:
 	int sock;
 	sockaddr_can addr;
@@ -31,9 +33,9 @@ private:
 	bool initialized;
 public:
 	SocketWrap(const char[]);
-	virtual auto socketInit() -> void;
-	virtual auto sendFrame(const uint32_t &, const std::vector<uint8_t> & ) -> void;
-	virtual auto readBlockingFrame(uint32_t &, std::vector<uint8_t> &) -> void;
-	virtual auto setFilter(const uint32_t &, const uint32_t &) -> void;
+	virtual auto init(const int & timeout) -> int override;
+	virtual auto sendFrame(const uint32_t &, const std::vector<uint8_t> & ) -> int override;
+	virtual auto readBlockingFrame(uint32_t &, std::vector<uint8_t> &) -> int override;
+	virtual auto setFilter(const uint32_t &, const uint32_t &) -> int override;
 	virtual ~SocketWrap();
 };
